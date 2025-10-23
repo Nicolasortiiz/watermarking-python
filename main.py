@@ -24,6 +24,7 @@ def cod_watermarking(img_entrada_path: Path, fator: int, img_watermarking_path: 
     if tamanho_watermarking > tamanho_original:
         raise ValueError("Imagem de entrada é menor que o watermarking!")
 
+    # adição do watermarking na imagem
     c_water, l_water = 0, 0 
     for canal in range(3):
         for l in range(linha_original):
@@ -31,15 +32,18 @@ def cod_watermarking(img_entrada_path: Path, fator: int, img_watermarking_path: 
                 if c_water >= coluna_water:
                     c_water = 0
                     l_water += 1
-
+                # retorna valor do pixel do watermarking e da imagem original
                 pixel_w = img_watermarking[c_water, l_water, canal]
                 pixel_o = img_original[l, c, canal]
 
+                # aplica o fator do watermarking
                 pixel_alt = int(pixel_o) + (int(pixel_w) * fator)
 
+                # trata pixel com valor maior ou igual a 255
                 while pixel_alt >= 255:
                     pixel_alt = pixel_alt - 255
 
+                # atualiza valor do pixel na imagem original
                 img_original[l, c, canal] = pixel_alt
                 
                 c_wate += 1
