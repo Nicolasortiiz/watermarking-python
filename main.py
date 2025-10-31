@@ -4,7 +4,7 @@ import argparse
 import numpy as np
 
 # função para codificar o watermarking em uma imagem
-def cod_watermarking(img_entrada_path: Path, img_watermarking_path: Path, img_out: Path, fator: int):
+def cod_watermarking(img_entrada_path: Path, img_watermarking_path: Path, img_out: Path, fator: float):
     # salva imagem original em uma váriavel
     img_original = cv2.imread(str(img_entrada_path), cv2.IMREAD_COLOR)
     if img_original is None:
@@ -21,8 +21,10 @@ def cod_watermarking(img_entrada_path: Path, img_watermarking_path: Path, img_ou
     # verificar se a imagem é maior ou igual ao watermarking
     tamanho_original = linha_original * coluna_original
     tamanho_watermarking = linha_water * coluna_water
-    if tamanho_watermarking > tamanho_original:
-        raise ValueError("Imagem de entrada é menor que o watermarking!")
+    if tamanho_watermarking != tamanho_original:
+        # caso o tamanho da imagem e do watermarking seja diferente, adapta o tamanho do watermarking
+        img_watermarking = cv2.resize(img_watermarking, (coluna_original, linha_original))
+        linha_water, coluna_water, _ = img_watermarking.shape
 
     img_alt = img_original.copy()
     # adição do watermarking na imagem
@@ -40,7 +42,7 @@ def cod_watermarking(img_entrada_path: Path, img_watermarking_path: Path, img_ou
                     pixel_o = img_alt[l_original, c_original, canal]
 
                     # aplica o fator do watermarking
-                    pixel_alt = pixel_o + (pixel_w * fator)
+                    pixel_alt = float(pixel_o) + (float(pixel_w) * fator)
 
                     # trata pixel com valor maior ou igual a 255
                     if pixel_alt >= 255:
@@ -55,7 +57,7 @@ def cod_watermarking(img_entrada_path: Path, img_watermarking_path: Path, img_ou
     print(f"Watermarking adicionado e salvo em: {img_out}")
     
 # função para decodificar o watermarking de uma imagem 
-def decod_watermarking(img_entrada_path: Path, img_clean_path: Path, img_out: Path, fator: int):
+def decod_watermarking(img_entrada_path: Path, img_clean_path: Path, img_out: Path, fator: float):
     # salva imagem com watermarking em uma váriavel
     img_input = cv2.imread(str(img_entrada_path), cv2.IMREAD_COLOR)
     if img_input is None:
@@ -84,7 +86,7 @@ def decod_watermarking(img_entrada_path: Path, img_clean_path: Path, img_out: Pa
                 pixel_i = img_input[l, c, canal]
                 pixel_c = img_clean[l, c, canal]
 
-                pixel_w = (pixel_i - pixel_c) / fator
+                pixel_w = float(pixel_i - pixel_c) / fator
 
                 if pixel_w >= 255:
                     pixel_w = pixel_w % 255 
@@ -110,7 +112,7 @@ if __name__ == '__main__':
 
     input_path = Path(args.input_img)
     output_path = Path(args.output_img)
-    fator = int(args.factor)
+    fator = float(args.factor)
 
     if args.add:
         if not args.watermarking_img:
