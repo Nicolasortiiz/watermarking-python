@@ -28,31 +28,27 @@ def cod_watermarking(img_entrada_path: Path, img_watermarking_path: Path, img_ou
 
     img_alt = img_original.copy()
     # adição do watermarking na imagem
-    c_original, l_original = 0, 0 
     for l in range(linha_water):
             for c in range(coluna_water):
-                if c_original >= coluna_water:
-                    c_original = 0
-                    l_original += 1
-
                 # insere o watermarking nos 3 canais da imagem    
                 for canal in range(3):
                     # retorna valor do pixel do watermarking e da imagem original
                     pixel_w = img_watermarking[l, c, canal]
-                    pixel_o = img_alt[l_original, c_original, canal]
+                    pixel_o = img_alt[l, c, canal]
+
+                    # transforma os pixels extraidos em float
+                    pixel_w = pixel_w.astype(np.float32)
+                    pixel_o = pixel_o.astype(np.float32)
 
                     # aplica o fator do watermarking
-                    pixel_alt = float(pixel_o) + (float(pixel_w) * fator)
+                    pixel_alt = pixel_o + (pixel_w * fator)
 
                     # trata pixel com valor maior ou igual a 255
-                    if pixel_alt >= 255:
-                        pixel_alt = pixel_alt % 255
+                    pixel_alt = np.clip(pixel_alt, 0, 255).astype(np.uint8)
 
                     # atualiza valor do pixel na imagem original
-                    img_alt[l_original, c_original, canal] = pixel_alt
+                    img_alt[l, c, canal] = pixel_alt
                 
-                c_original += 1
-
     cv2.imwrite(str(img_out), img_alt)
     print(f"Watermarking adicionado e salvo em: {img_out}")
     
@@ -74,22 +70,27 @@ def decod_watermarking(img_entrada_path: Path, img_clean_path: Path, img_out: Pa
     tamanho_input = linha_input * coluna_input
     tamanho_clean = linha_clean * coluna_clean
 
-    if temanho_input != tamanho_clean:
+    if tamanho_input != tamanho_clean:
         raise ValueError("A imagem original e a imagem com watermarking não tem as mesmas dimensões!")
 
     # cria uma imagem em branco para armazenar o watermarking
     img_water = np.zeros((linha_clean,coluna_clean,3), dtype=np.uint8)
 
+    # extrai watermarking da imagem
     for l in range(linha_clean):
         for c in range(coluna_clean):
             for canal in range(3):
                 pixel_i = img_input[l, c, canal]
                 pixel_c = img_clean[l, c, canal]
 
-                pixel_w = float(pixel_i - pixel_c) / fator
+                # transforma os pixels extraidos em float
+                pixel_i = pixel_i.astype(np.float32)
+                pixel_c = pixel_c.astype(np.float32)
 
-                if pixel_w >= 255:
-                    pixel_w = pixel_w % 255 
+                pixel_w = (pixel_i - pixel_c) / fator
+
+                # trata pixel com valor maior que 255 ou menor que 0
+                pixel_w = np.clip(pixel_w, 0, 255).astype(np.uint8)
 
                 img_water[l, c, canal] = pixel_w
 
