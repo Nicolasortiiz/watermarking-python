@@ -71,7 +71,9 @@ def decod_watermarking(img_entrada_path: Path, img_clean_path: Path, img_out: Pa
     tamanho_clean = linha_clean * coluna_clean
 
     if tamanho_input != tamanho_clean:
-        raise ValueError("A imagem original e a imagem com watermarking não tem as mesmas dimensões!")
+        # caso o tamanho da imagem com watermark e da original seja diferente, adapta o tamanho do com watermark
+        img_input = cv2.resize(img_input, (coluna_clean, linha_clean))
+        linha_water, coluna_water, _ = img_input.shape
 
     # cria uma imagem em branco para armazenar o watermarking
     img_water = np.zeros((linha_clean,coluna_clean,3), dtype=np.uint8)
