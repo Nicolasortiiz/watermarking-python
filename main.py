@@ -36,8 +36,9 @@ def cod_watermarking(img_entrada_path: Path, img_watermarking_path: Path, img_ou
                     pixel_w = img_watermarking[l, c, canal]
                     pixel_o = img_alt[l, c, canal]
 
-                    # transforma os pixels extraidos em float
+                    # transforma os pixels extraidos em float e escurece o watermark para facilitar a extração
                     pixel_w = pixel_w.astype(np.float32)
+                    pixel_w = np.clip(pixel_w * 0.8, 0, 255)
                     pixel_o = pixel_o.astype(np.float32)
 
                     # aplica o fator do watermarking
