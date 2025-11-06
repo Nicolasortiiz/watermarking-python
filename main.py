@@ -38,7 +38,7 @@ def cod_watermarking(img_entrada_path: Path, img_watermarking_path: Path, img_ou
 
                     # transforma os pixels extraidos em float e escurece o watermark para facilitar a extração
                     pixel_w = pixel_w.astype(np.float32)
-                    pixel_w = np.clip(pixel_w * 0.8, 0, 255)
+                    pixel_w = np.clip(pixel_w * 0.7, 0, 255)
                     pixel_o = pixel_o.astype(np.float32)
 
                     # aplica o fator do watermarking
@@ -53,8 +53,8 @@ def cod_watermarking(img_entrada_path: Path, img_watermarking_path: Path, img_ou
     cv2.imwrite(str(img_out), img_alt)
     print(f"Watermarking adicionado e salvo em: {img_out}")
     
-# função para decodificar o watermarking de uma imagem 
-def decod_watermarking(img_entrada_path: Path, img_clean_path: Path, img_out: Path, fator: float):
+# função para decodificar o watermarking de uma imagem (imagem sem corte)
+def decod_watermarking_inteiro(img_entrada_path: Path, img_clean_path: Path, img_out: Path, fator: float):
     # salva imagem com watermarking em uma váriavel
     img_input = cv2.imread(str(img_entrada_path), cv2.IMREAD_COLOR)
     if img_input is None:
@@ -92,6 +92,9 @@ def decod_watermarking(img_entrada_path: Path, img_clean_path: Path, img_out: Pa
 
                 pixel_w = (pixel_i - pixel_c) / fator
 
+                # Reverte escurencimento
+                pixel_w = pixel_w / 0.7 
+
                 # trata pixel com valor maior que 255 ou menor que 0
                 pixel_w = np.clip(pixel_w, 0, 255).astype(np.uint8)
 
@@ -99,6 +102,55 @@ def decod_watermarking(img_entrada_path: Path, img_clean_path: Path, img_out: Pa
 
     cv2.imwrite(str(img_out), img_water)
     print(f"Watermarking extraído para: {img_out}")
+
+# função para decodificar o watermarking de uma imagem (imagem com corte)
+def decod_watermarking_parcial(img_entrada_path: Path, img_clean_path: Path, img_out: Path, fator: float):
+    # salva imagem com watermarking em uma váriavel
+    img_input = cv2.imread(str(img_entrada_path), cv2.IMREAD_COLOR)
+    if img_input is None:
+        raise FileNotFoundError(f"Arquivo da imagem de entrada ({img_entrada_path}) não encontrado!")
+
+    # salva imagem original (sem watermarking) em um arquivo
+    img_clean = cv2.imread(str(img_clean_path), cv2.IMREAD_COLOR)
+    if img_clean is None:
+        raise FileNotFoundError(f"Arquivo da imagem original ({img_clean_path}) não encontrado!")
+
+    # Extrai linhas e colunas das imagens
+    linha_input, coluna_input, _ = img_input.shape
+    linha_clean, coluna_clean, _ = img_clean.shape
+
+    # Busca localização com menor diferença na imagem original
+    result = cv2.matchTemplate(img_clean, img_input, cv2.TM_SQDIFF_NORMED)
+    _, _, min_loc, _ = cv2.minMaxLoc(result)
+    x, y = min_loc
+
+    img_water = np.zeros((linha_clean,coluna_clean,3), dtype=np.uint8)
+
+    # extrai watermarking da imagem
+    for l in range(linha_input):
+        for c in range(coluna_input):
+            for canal in range(3):
+                pixel_i = img_input[l, c, canal]
+                pixel_c = img_clean[l + y, c + x, canal]
+
+                # transforma os pixels extraidos em float
+                pixel_i = pixel_i.astype(np.float32)
+                pixel_c = pixel_c.astype(np.float32)
+
+                pixel_w = (pixel_i - pixel_c) / fator
+
+                # Reverte escurencimento
+                pixel_w = pixel_w / 0.7 
+
+                # trata pixel com valor maior que 255 ou menor que 0
+                pixel_w = np.clip(pixel_w, 0, 255).astype(np.uint8)
+
+                img_water[l, c, canal] = pixel_w
+
+    cv2.imwrite(str(img_out), img_water)
+    print(f"Watermarking extraído para: {img_out}")
+
+
 
 
 # argumentos recebidos para execução do código
@@ -110,6 +162,7 @@ PARSER.add_argument('-f', '--factor', required=True, help='Fator de escala usado
 PARSER.add_argument('-c', '--clean-img', required=False, help='Caminho da imagem original, sem o watermarking')
 PARSER.add_argument('--add', action='store_true', help='Flag usada para adicionar o watermarking em uma imagem')
 PARSER.add_argument('--extract', action='store_true', help='Flag usada para extraír o watermarking de uma imagem')
+PARSER.add_argument('--partial', action='store_true', help='Flag utilizada com --extract para extrair o watermarking de imagem cortada')
 
 if __name__ == '__main__':
     args = PARSER.parse_args()
@@ -125,6 +178,10 @@ if __name__ == '__main__':
     elif args.extract:
         if not args.clean_img:
             PARSER.error('-c/--clean-img é obrigatório para --extract')
-        decod_watermarking(input_path, args.clean_img, output_path, fator)
+            
+        if args.partial:
+            decod_watermarking_parcial(input_path, args.clean_img, output_path, fator)
+        else:
+            decod_watermarking_inteiro(input_path, args.clean_img, output_path, fator)
     else:
         PARSER.error('Necessário usar flag --add ou --extract')
